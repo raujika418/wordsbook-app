@@ -5,14 +5,17 @@ import { TouchableOpacity } from "react-native";
 import { RootStackParamList } from "./types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { DATABASE_NAME } from "./database/db";
-import { useSQLiteContext } from "expo-sqlite";
 import MyStylesheet from "./MyStylesheet";
 import { useEffect, useState, useCallback } from "react";
-import db_command from "./database/db_command";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  connectToDatabase,
+  getBookList,
+  deleteBookList,
+} from "./database/db_v2";
 
 type WordsScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Words">;
@@ -20,7 +23,6 @@ type WordsScreenProps = {
 
 const Words: React.FC<WordsScreenProps> = ({ navigation }) => {
   const route: any = useRoute();
-  const db = useSQLiteContext();
   const [bookList, setBookList] = useState<Array<any>>([]);
   const onClickToPage = (pageId: string) => {
     switch (pageId) {
@@ -32,14 +34,14 @@ const Words: React.FC<WordsScreenProps> = ({ navigation }) => {
         break;
     }
   };
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     // Logic to fetch or update your data
     console.log("Screen focused, fetching data...");
     // Example: setData(fetchedNewData);
     try {
-      const asynclist = db.getAllSync(db_command.bookListQuery, {
-        useNewConnection: true,
-      });
+      const db = await connectToDatabase();
+      const asynclist = await getBookList(db);
+      console.log(JSON.stringify(asynclist));
       setBookList(() => {
         return [...asynclist.reverse()];
       });
@@ -83,16 +85,12 @@ const Words: React.FC<WordsScreenProps> = ({ navigation }) => {
             data={bookList}
             persistentScrollbar
             renderItem={({ item }: any) => (
-              <View style={styles.bookListItem}>
+              <View key={item.id} style={styles.bookListItem}>
                 <View style={styles.bookListItemTitle}>
-                  <Text style={styles.bookListItemTitleText}>
-                    {item.WORDSBOOKS_NAME}
-                  </Text>
+                  <Text style={styles.bookListItemTitleText}>{item.name}</Text>
                 </View>
                 <View style={styles.bookListItemOp}>
-                  <Text style={styles.bookListItemLang}>
-                    {item.LANG_DISPLAY_NAME}
-                  </Text>
+                  <Text style={styles.bookListItemLang}>{item.lang}</Text>
                   <View style={styles.bookListItemIconsGroup}>
                     <MaterialCommunityIcons
                       name="book-edit"
@@ -100,9 +98,9 @@ const Words: React.FC<WordsScreenProps> = ({ navigation }) => {
                       color="black"
                       onPress={() => {
                         navigation.navigate("EditWords", {
-                          bookID: item.ID,
+                          bookID: item.id,
                         });
-                        console.log(`EDIT ${item.ID}`);
+                        console.log(`EDIT ${item.id}`);
                       }}
                     />
                     <AntDesign
@@ -121,15 +119,17 @@ const Words: React.FC<WordsScreenProps> = ({ navigation }) => {
                             },
                             {
                               text: "Yes", // The text for the 'Yes' button
-                              onPress: () => {
+                              onPress: async () => {
                                 try {
-                                  const result = db.runSync(
-                                    db_command.bookListDelete(item.ID),
+                                  const db = await connectToDatabase();
+                                  const result = await deleteBookList(
+                                    db,
+                                    item.id,
                                   );
                                   alert(
                                     (() => {
                                       fetchData();
-                                      return `Edit ${result.changes == 1 ? "successful" : "failed"}.`;
+                                      return `Edit ${result[0]?.rowsAffected == 1 ? "successful" : "failed"}.`;
                                     })(),
                                   );
                                 } catch (error) {
@@ -141,7 +141,7 @@ const Words: React.FC<WordsScreenProps> = ({ navigation }) => {
                           { cancelable: false }, // (Android only) Prevents dismissing the alert by tapping outside
                         );
 
-                        console.log(`DELETE ${item.ID}`);
+                        console.log(`DELETE ${item.id}`);
                       }}
                     />
                   </View>
@@ -157,7 +157,7 @@ const Words: React.FC<WordsScreenProps> = ({ navigation }) => {
                 </Text>
               </View>
             )}
-            keyExtractor={(item: any) => item.ID}
+            keyExtractor={(item: any) => item.id}
           />
         </SafeAreaView>
         <View style={[styles.bookListButtonArea, { flex: 2 }]}>

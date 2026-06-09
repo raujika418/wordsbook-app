@@ -4,12 +4,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { TouchableOpacity } from "react-native";
 import { RootStackParamList } from "./types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { useSQLiteContext } from "expo-sqlite";
 import MyStylesheet from "./MyStylesheet";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useCallback, useEffect, useState } from "react";
-import db_command from "./database/db_command";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
+import { connectToDatabase, getBookList } from "./database/db_v2";
 
 type TrainingScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Training">;
@@ -17,7 +16,6 @@ type TrainingScreenProps = {
 
 const Training: React.FC<TrainingScreenProps> = ({ navigation }) => {
   const route: any = useRoute();
-  const db = useSQLiteContext();
   const [bookSelected, setBookSelected] = useState(-1);
   const [bookList, setBookList] = useState<Array<any>>([]);
   const onClickToPage = (pageId: string) => {
@@ -34,20 +32,18 @@ const Training: React.FC<TrainingScreenProps> = ({ navigation }) => {
     setBookSelected((id_) => {
       const id = id_ == wid ? -1 : wid;
       const json = JSON.stringify(
-        bookList.find((words: any) => words.ID == id),
+        bookList.find((words: any) => words.id == id),
       );
       console.log(id == -1 ? -1 : wid, id == -1 ? "NEW/UNDO" : json);
       return id;
     });
   };
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     // Logic to fetch or update your data
     try {
       console.log("Screen focused, fetching data...");
-      console.log(db_command.bookListQuery);
-      const asynclist = db.getAllSync(db_command.bookListQuery, {
-        useNewConnection: true,
-      });
+      const db = await connectToDatabase();
+      const asynclist = await getBookList(db);
       const reversed = asynclist.reverse();
       console.log("reversed: " + JSON.stringify(reversed));
       setBookList([...reversed]);
@@ -91,23 +87,25 @@ const Training: React.FC<TrainingScreenProps> = ({ navigation }) => {
             persistentScrollbar
             renderItem={({ item }: any) => (
               <TouchableOpacity
+                key={item.id}
                 onPress={() => {
-                  onWordsPress(item.ID);
+                  onWordsPress(item.id);
                 }}
               >
                 <View
+                  key={item.id}
                   style={{
                     ...styles.bookListItem,
                     flexDirection: "row",
                     height: "auto",
                     justifyContent: "space-between",
-                    borderColor: bookSelected == item.ID ? "brown" : "black",
+                    borderColor: bookSelected == item.id ? "brown" : "black",
                   }}
                 >
                   <Text
                     style={{ alignItems: "flex-start", alignSelf: "stretch" }}
                   >
-                    {item.WORDSBOOKS_NAME}
+                    {item.name}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -121,7 +119,7 @@ const Training: React.FC<TrainingScreenProps> = ({ navigation }) => {
                 </Text>
               </View>
             )}
-            keyExtractor={(item: any) => item.ID}
+            keyExtractor={(item: any) => item.id}
           ></FlatList>
         </SafeAreaView>
         <View
@@ -151,22 +149,6 @@ const Training: React.FC<TrainingScreenProps> = ({ navigation }) => {
             >
               Start Trainning
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.bookListButton,
-              {
-                // marginTop: 5,
-                flex: 1,
-                borderColor: "grey",
-                alignItems: "center",
-                alignSelf: "stretch",
-              },
-            ]}
-            disabled
-            onPress={() => {}}
-          >
-            <Text style={[styles.text, { color: "grey" }]}>Scoreboard</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[

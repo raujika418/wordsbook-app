@@ -4,40 +4,37 @@ import { RootStackParamList } from "./types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { View, Text, ActivityIndicator } from "react-native";
-import { useEffect, useState } from "react";
-import { SQLiteProvider, openDatabaseSync } from "expo-sqlite";
-import { initDatabase, DATABASE_NAME } from "./database/db";
+import { useEffect, useState, useCallback } from "react";
+import { createTables, connectToDatabase } from "./database/db_v2";
 import Home from "./Home";
 import Words from "./Words";
 import Training from "./Training";
 import CreateBook from "./CreateBook";
 import EditWords from "./EditWords";
 import TrainingMain from "./TrainingMain";
-import Storage from "expo-sqlite/kv-store";
+import About from "./About";
+import { enablePromise, openDatabase } from "react-native-sqlite-storage";
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [isDbReady, setIsDbReady] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
+  const loadData = useCallback(async () => {
+    try {
+      const db = await connectToDatabase();
+      await createTables(db);
+      console.log("loaded");
+      setIsDbReady(true);
+    } catch (error) {
+      setDbError("Database init failed");
+      console.error(error);
+    }
+  }, []);
 
   useEffect(() => {
-    const setupDb = () => {
-      try {
-        initDatabase();
-        setIsDbReady(true);
-        // const hasLaunched = await Storage.getItem("@app_has_launched");
-        // if (hasLaunched === null) {
-          // await Storage.setItem("@app_has_launched", "true");
-          // alert("Please click Wordsbook Management at first start.");
-        // }
-      } catch (error) {
-        setDbError("Database init failed");
-        console.error(error);
-      }
-    };
-    setupDb();
-  }, []);
+    loadData();
+  }, [loadData]);
 
   if (dbError) {
     return (
@@ -57,24 +54,23 @@ export default function App() {
   }
 
   return (
-    <SQLiteProvider databaseName={DATABASE_NAME}>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Home" // ← This makes Home your default screen
-          screenOptions={{
-            headerShown: false,
-            cardStyle: { zIndex: 1, backgroundColor: "transparent" },
-            presentation: "transparentModal",
-          }}
-        >
-          <Stack.Screen name="Home" component={Home} />
-          <Stack.Screen name="Words" component={Words} />
-          <Stack.Screen name="Training" component={Training} />
-          <Stack.Screen name="TrainingMain" component={TrainingMain} />
-          <Stack.Screen name="CreateBook" component={CreateBook} />
-          <Stack.Screen name="EditWords" component={EditWords} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SQLiteProvider>
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Home" // ← This makes Home your default screen
+        screenOptions={{
+          headerShown: false,
+          cardStyle: { zIndex: 1, backgroundColor: "transparent" },
+          presentation: "transparentModal",
+        }}
+      >
+        <Stack.Screen name="Home" component={Home} />
+        <Stack.Screen name="Words" component={Words} />
+        <Stack.Screen name="Training" component={Training} />
+        <Stack.Screen name="TrainingMain" component={TrainingMain} />
+        <Stack.Screen name="CreateBook" component={CreateBook} />
+        <Stack.Screen name="EditWords" component={EditWords} />
+        <Stack.Screen name="About" component={About} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }

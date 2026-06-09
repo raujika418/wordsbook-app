@@ -4,13 +4,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { TouchableOpacity } from "react-native";
 import { RootStackParamList } from "./types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { useSQLiteContext } from "expo-sqlite";
 import MyStylesheet from "./MyStylesheet";
-import db_command from "./database/db_command";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Progress from "react-native-progress";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
+import { connectToDatabase, getBookWords } from "./database/db_v2";
 
 type TrainingMainScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "TrainingMain">;
@@ -18,7 +17,6 @@ type TrainingMainScreenProps = {
 
 const TrainingMain: React.FC<TrainingMainScreenProps> = ({ navigation }) => {
   const route: any = useRoute();
-  const db = useSQLiteContext();
 
   const shuffleArray = (array: Array<any>) => {
     // Create a shallow copy to avoid mutating the original array
@@ -87,16 +85,13 @@ const TrainingMain: React.FC<TrainingMainScreenProps> = ({ navigation }) => {
       setMcChoice([]);
     }
   };
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     // Logic to fetch or update your data
     console.log("Screen focused, fetching data...");
     // Example: setData(fetchedNewData);  const wordListInit = shuffleArray(
     try {
-      const words = shuffleArray(
-        db.getAllSync(db_command.wordsListQuery(route.params.bookID), {
-          useNewConnection: true,
-        }),
-      );
+      const db = await connectToDatabase();
+      const words = shuffleArray(await getBookWords(db, route.params.bookID));
       setWordsList([...words]);
     } catch (error) {
       console.error(error);
@@ -323,7 +318,7 @@ const TrainingMain: React.FC<TrainingMainScreenProps> = ({ navigation }) => {
               onPressOut={() => setPressed(false)}
               style={[
                 pressed
-                  ? item?.ID != wordList[selected]?.ID
+                  ? item?.id != wordList[selected]?.id
                     ? { backgroundColor: "rgba(256, 0, 0,0.3)" }
                     : { backgroundColor: "rgba(0, 256, 0,0.3)" }
                   : {
@@ -342,7 +337,7 @@ const TrainingMain: React.FC<TrainingMainScreenProps> = ({ navigation }) => {
               ]}
               onPress={() => {
                 if (selected + 1 >= wordList.length) {
-                  if (item?.ID != wordList[selected]?.ID) {
+                  if (item?.id != wordList[selected]?.id) {
                     setWrongNum((i) => i + 1);
                   } else {
                     setRightNum((i) => i + 1);
@@ -351,7 +346,7 @@ const TrainingMain: React.FC<TrainingMainScreenProps> = ({ navigation }) => {
                   setShowAlert(true);
                   toggleTimer();
                 } else {
-                  if (item?.ID != wordList[selected]?.ID) {
+                  if (item?.id != wordList[selected]?.id) {
                     setSelected((s) => {
                       setPrevious(false);
                       setWrongNum((i) => i + 1);

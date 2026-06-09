@@ -14,15 +14,23 @@ import { TouchableOpacity } from "react-native";
 import { RootStackParamList } from "./types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { DATABASE_NAME } from "./database/db";
-import { useSQLiteContext } from "expo-sqlite";
 import MyStylesheet from "./MyStylesheet";
 import { useEffect, useState, useCallback } from "react";
-import db_command from "./database/db_command";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { SelectList } from "react-native-dropdown-select-list";
+import {
+  connectToDatabase,
+  createWords,
+  deleteWords,
+  getBookDetails,
+  getBookWords,
+  getLangList,
+  updateBooks,
+  updateWords,
+} from "./database/db_v2";
 
 const styles = MyStylesheet;
 
@@ -32,7 +40,6 @@ type EditWordsScreenProps = {
 
 const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
   const route: any = useRoute();
-  const db = useSQLiteContext();
   const [bookDetail, setBookDetail] = useState<any>([]);
   const [langList, setLangList] = useState<Array<any>>([]);
   const [wordsList, setWordsList] = useState<Array<any>>([]);
@@ -51,20 +58,20 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
   };
   const TEXT_VALUE =
     wordsSelected != -1
-      ? wordsList.find((words) => words.ID == wordsSelected)?.TEXT
+      ? wordsList.find((words) => words.id == wordsSelected)?.TEXT
       : newText;
   const TEXT_TRANS_VALUE =
     wordsSelected != -1
-      ? wordsList.find((words) => words.ID == wordsSelected)?.TEXT_TRANS
+      ? wordsList.find((words) => words.id == wordsSelected)?.TEXT_TRANS
       : newTextTrans;
   const DES_VALUE =
     wordsSelected != -1
-      ? wordsList.find((words) => words.ID == wordsSelected)?.DES
+      ? wordsList.find((words) => words.id == wordsSelected)?.DES
       : newDes;
   const onWordsChange = (id: number, attr: string, context: string) => {
     setWordsList((list_) => {
       const list = list_.map((words: any) => {
-        if (words.ID == id) {
+        if (words.id == id) {
           words[attr] = context;
         }
         return words;
@@ -76,32 +83,27 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
     setWordsSelected((id_) => {
       const id = id_ == wid ? -1 : wid;
       const json = JSON.stringify(
-        wordsList.find((words: any) => words.ID == id),
+        wordsList.find((words: any) => words.id == id),
       );
       console.log(id == -1 ? -1 : wid, id == -1 ? "NEW/UNDO" : json);
       return id;
     });
   };
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     // Logic to fetch or update your data
     console.log("Screen focused, fetching data...");
     // Example: setData(fetchedNewData);
     try {
-      const book: any = db.getFirstSync(
-        db_command.bookQuery(route.params.bookID),
-      );
+      const db = await connectToDatabase();
+      const book: any = await getBookDetails(db, route.params.bookID);
       setBookDetail(() => {
         setSelected(book.lang_id);
         setNewName(book.name);
         return book;
       });
-      const lang = db.getAllSync(db_command.langListQuery, {
-        useNewConnection: true,
-      });
+      const lang = await getLangList(db);
       setLangList([...lang]);
-      const words = db.getAllSync(
-        db_command.wordsListQuery(route.params.bookID),
-      );
+      const words = await getBookWords(db, route.params.bookID);
       setWordsList([...words.reverse()]);
     } catch (error) {
       console.error(error);
@@ -192,19 +194,19 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
                     },
                     {
                       text: "Yes", // The text for the 'Yes' button
-                      onPress: () => {
+                      onPress: async () => {
                         try {
-                          const result = db.runSync(
-                            db_command.wordsBookUpdate(
-                              route.params.bookID,
-                              newName,
-                              selected,
-                            ),
+                          const db = await connectToDatabase();
+                          const result = await updateBooks(
+                            db,
+                            route.params.bookID,
+                            newName,
+                            selected,
                           );
                           alert(
                             (() => {
                               fetchData();
-                              return `Edit ${result.changes == 1 ? "successful" : "failed"}.`;
+                              return `Edit ${result[0]?.rowsAffected == 1 ? "successful" : "failed"}.`;
                             })(),
                           );
                         } catch (error) {
@@ -290,17 +292,19 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
               persistentScrollbar
               renderItem={({ item }: any) => (
                 <TouchableOpacity
+                  key={item.id}
                   onPress={() => {
-                    onWordsPress(item.ID);
+                    onWordsPress(item.id);
                   }}
                 >
                   <View
+                    key={item.id}
                     style={{
                       ...styles.bookListItem,
                       flexDirection: "row",
                       height: "auto",
                       justifyContent: "space-between",
-                      borderColor: wordsSelected == item.ID ? "brown" : "black",
+                      borderColor: wordsSelected == item.id ? "brown" : "black",
                     }}
                   >
                     <Text
@@ -324,15 +328,14 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
                             },
                             {
                               text: "Yes", // The text for the 'Yes' button
-                              onPress: () => {
+                              onPress: async () => {
                                 try {
-                                  const result = db.runSync(
-                                    db_command.wordsListDelete(item.ID),
-                                  );
+                                  const db = await connectToDatabase();
+                                  const result = await deleteWords(db, item.id);
                                   alert(
                                     (() => {
                                       fetchData();
-                                      return `Edit ${result.changes == 1 ? "successful" : "failed"}.`;
+                                      return `Edit ${result[0]?.rowsAffected == 1 ? "successful" : "failed"}.`;
                                     })(),
                                   );
                                 } catch (error) {
@@ -357,13 +360,13 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
                   </Text>
                 </View>
               )}
-              keyExtractor={(item: any) => item.ID}
+              keyExtractor={(item: any) => item.id}
             ></FlatList>
           </SafeAreaView>
           <View style={{ ...styles.bookListButtonArea, flex: 2, zIndex: 1 }}>
             <TouchableOpacity
               style={[styles.bookListButton, { flex: 1 }]}
-              onPress={() => {
+              onPress={async () => {
                 if (wordsSelected == -1) {
                   alert("Please click a words to start editing.");
                 } else {
@@ -371,22 +374,18 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
                     alert(`Invalid empty field found.`);
                   } else {
                     try {
-                      const result = db.runSync(
-                        (() => {
-                          const sql = db_command.wordsListUpdate(
-                            wordsSelected,
-                            TEXT_VALUE,
-                            TEXT_TRANS_VALUE,
-                            DES_VALUE,
-                          );
-                          return sql;
-                        })(),
+                      const db = await connectToDatabase();
+                      const result = await updateWords(
+                        db,
+                        wordsSelected,
+                        TEXT_VALUE,
+                        TEXT_TRANS_VALUE,
+                        DES_VALUE,
                       );
-                      console.log(`${result.lastInsertRowId}`);
                       alert(
                         (() => {
                           fetchData();
-                          return `Edit ${result.changes == 1 ? "successful" : "failed"}.`;
+                          return `Edit ${result[0]?.rowsAffected == 1 ? "successful" : "failed"}.`;
                         })(),
                       );
                     } catch (error) {
@@ -400,7 +399,7 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bookListButton, { flex: 1 }]}
-              onPress={() => {
+              onPress={async () => {
                 if (wordsSelected != -1) {
                   alert("Please unclick the word item first.");
                 } else {
@@ -408,22 +407,18 @@ const EditWords: React.FC<EditWordsScreenProps> = ({ navigation }) => {
                     alert(`Invalid empty field found.`);
                   } else {
                     try {
-                      const result = db.runSync(
-                        (() => {
-                          const sql = db_command.wordsListInsert(
-                            route.params.bookID,
-                            TEXT_VALUE,
-                            TEXT_TRANS_VALUE,
-                            DES_VALUE,
-                          );
-                          return sql;
-                        })(),
+                      const db = await connectToDatabase();
+                      const result = await createWords(
+                        db,
+                        route.params.bookID,
+                        TEXT_VALUE,
+                        TEXT_TRANS_VALUE,
+                        DES_VALUE,
                       );
-                      console.log(`${result.lastInsertRowId}`);
                       alert(
                         (() => {
                           fetchData();
-                          return `Edit ${result.changes == 1 ? "successful" : "failed"}.`;
+                          return `Edit ${result[0]?.rowsAffected == 1 ? "successful" : "failed"}.`;
                         })(),
                       );
                     } catch (error) {

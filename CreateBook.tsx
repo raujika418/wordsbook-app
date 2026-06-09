@@ -12,35 +12,37 @@ import { TouchableOpacity } from "react-native";
 import { RootStackParamList } from "./types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { DATABASE_NAME } from "./database/db";
-import { useSQLiteContext } from "expo-sqlite";
 import MyStylesheet from "./MyStylesheet";
 import { useCallback, useState } from "react";
-import db_command from "./database/db_command";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { TextInput } from "react-native";
 import { SelectList } from "react-native-dropdown-select-list";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
+import {
+  createBook,
+  getLangList,
+  connectToDatabase,
+  getBookList,
+} from "./database/db_v2";
 
 type CreateBookScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Words">;
 };
 
 const CreateBook: React.FC<CreateBookScreenProps> = ({ navigation }) => {
-  const route: any = useRoute();
-  const db = useSQLiteContext();
   const [langList, setLangList] = useState<Array<any>>([]);
   const [selected, setSelected] = useState(-1);
   const [text, setText] = useState("");
-  const onClickToPage = (pageId: string) => {
+  const onClickToPage = useCallback(async (pageId: string) => {
     switch (pageId) {
       case "create":
         if (selected > -1) {
           try {
-            //   console.log(db_command.bookListCreate(text, selected));
-            const result = db.runSync(
-              db_command.bookListCreate(text, selected),
+            const db = await connectToDatabase();
+            const result = await createBook(db, text, selected);
+            alert(
+              `Create ${result[0]?.rowsAffected == 1 ? "successful" : "failed"}.`,
             );
-            alert(`Create ${result.changes == 1 ? "successful" : "failed"}.`);
           } catch (error) {
             console.error(error);
           }
@@ -51,15 +53,14 @@ const CreateBook: React.FC<CreateBookScreenProps> = ({ navigation }) => {
         navigation.goBack();
         break;
     }
-  };
-  const fetchData = useCallback(() => {
+  }, []);
+  const fetchData = useCallback(async () => {
     // Logic to fetch or update your data
     console.log("Screen focused, fetching data...");
     // Example: setData(fetchedNewData);
     try {
-      const syncList = db.getAllSync(db_command.langListQuery, {
-        useNewConnection: true,
-      });
+      const db = await connectToDatabase();
+      const syncList = await getLangList(db);
       setLangList(() => {
         return [...syncList];
       });

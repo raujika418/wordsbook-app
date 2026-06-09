@@ -4,9 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { TouchableOpacity } from "react-native";
 import { RootStackParamList } from "./types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { useSQLiteContext } from "expo-sqlite";
 import MyStylesheet from "./MyStylesheet";
-import * as SQLite from "expo-sqlite";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -17,7 +15,6 @@ type HomeScreenProps = {
 };
 
 const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const db = useSQLiteContext();
   const onClickToPage = (pageId: string) => {
     switch (pageId) {
       case "words":
@@ -25,6 +22,9 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
         break;
       case "training":
         navigation.navigate("Training");
+        break;
+      case "about":
+        navigation.navigate("About");
         break;
     }
   };
@@ -49,6 +49,7 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
         <View style={{ flex: 1 }}></View>
         <Text style={[styles.app_title, { flex: 1 }]}>THE WORDS</Text>
         <Text style={[styles.app_title, { flex: 1 }]}>NOTEBOOK</Text>
+        <View style={{ flex: 1 }}></View>
         <View style={[styles.view, { flex: 4, display: "flex" }]}>
           <TouchableOpacity
             style={[styles.button, { flex: 1 }]}
@@ -63,20 +64,17 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
             <Text style={[styles.text]}>Trainning Mode</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.button, { flex: 1, borderColor: "grey" }]}
-            onPress={() => {
-              // Replaces the old deleteDatabaseAsync if using newer expo-sqlite versions
-              console.log("deleting");
-              // SQLite.deleteDatabaseSync("db_v1.db");
-            }}
+            style={[styles.button, { flex: 1 }]}
+            onPress={() => onClickToPage("about")}
           >
-            <Text style={[styles.text, { color: "grey" }]}>
+            <Text style={[styles.text]}>
               {/* Setting */}
               About Developer
             </Text>
           </TouchableOpacity>
-          <View style={{ flex: 1 }}></View>
         </View>
+        <View style={{ flex: 1 }}></View>
+        {/* <View style={{ flex: 3 }}></View> */}
       </LinearGradient>
     </SafeAreaView>
   );
