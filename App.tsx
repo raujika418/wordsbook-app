@@ -1,4 +1,4 @@
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { RootStackParamList } from "./types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -13,7 +13,15 @@ import CreateBook from "./CreateBook";
 import EditWords from "./EditWords";
 import TrainingMain from "./TrainingMain";
 import About from "./About";
-import { enablePromise, openDatabase } from "react-native-sqlite-storage";
+import {
+  AppOpenAd,
+  AdEventType,
+  TestIds,
+} from "react-native-google-mobile-ads";
+import { Button, Platform, StatusBar } from "react-native";
+import mobileAds from "react-native-google-mobile-ads";
+import { useRef } from "react";
+import { AppState } from "react-native";
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -35,6 +43,7 @@ export default function App() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
 
   if (dbError) {
     return (

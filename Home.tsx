@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
+import { AppState, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { TouchableOpacity } from "react-native";
 import { RootStackParamList } from "./types/navigation";
@@ -9,14 +9,23 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import {
+  AdEventType,
+  AppOpenAd,
+  TestIds,
+} from "react-native-google-mobile-ads";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 
 type HomeScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Home">;
 };
+const adUnitId = __DEV__ ? TestIds.APP_OPEN : "ca-app-pub-9550967761414119/3937539295";
+const appOpenAd = AppOpenAd.createForAdRequest(adUnitId);
 
 const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
   const onClickToPage = (pageId: string) => {
-    switch (pageId) {
+    switch (pageId) { 
       case "words":
         navigation.navigate("Words");
         break;
@@ -28,6 +37,23 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
         break;
     }
   };
+
+  useEffect(() => {
+    const unsubscribeLoaded = appOpenAd.addAdEventListener(
+      AdEventType.LOADED,
+      () => {
+        appOpenAd.show();
+      },
+    );
+    // Initial load
+    appOpenAd.load();
+
+    return () => {
+      unsubscribeLoaded();
+    };
+  }, []);
+
+
   const getI18N = () => {};
   const insets = useSafeAreaInsets();
   return (
