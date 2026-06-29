@@ -11,7 +11,8 @@ enablePromise(true);
 export const connectToDatabase = async () => {
   return openDatabase(
     { name: "db_v2.db", location: "default" },
-    () => {},
+    () => {
+    },
     (error: any) => {
       console.error(error);
       throw Error("Could not connect to database");

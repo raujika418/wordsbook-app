@@ -31,22 +31,11 @@ type CreateBookScreenProps = {
 
 const CreateBook: React.FC<CreateBookScreenProps> = ({ navigation }) => {
   const [langList, setLangList] = useState<Array<any>>([]);
-  const [selected, setSelected] = useState(-1);
   const [text, setText] = useState("");
-  const onClickToPage = useCallback(async (pageId: string) => {
+  const [selected, setSelected] = useState(-1);
+  const onClickToPage = useCallback((pageId: string) => {
     switch (pageId) {
       case "create":
-        if (selected > -1) {
-          try {
-            const db = await connectToDatabase();
-            const result = await createBook(db, text, selected);
-            alert(
-              `Create ${result[0]?.rowsAffected == 1 ? "successful" : "failed"}.`,
-            );
-          } catch (error) {
-            console.error(error);
-          }
-        }
         navigation.goBack();
         break;
       case "back":
@@ -54,6 +43,17 @@ const CreateBook: React.FC<CreateBookScreenProps> = ({ navigation }) => {
         break;
     }
   }, []);
+  const createBookByClick = async (text: string, selected: number) => {
+    if (selected > -1) {
+      try {
+        const db = await connectToDatabase();
+        const result = await createBook(db, text, selected);
+        alert(`Create with ${result[0].rowsAffected == 1}.`);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
   const fetchData = useCallback(async () => {
     // Logic to fetch or update your data
     console.log("Screen focused, fetching data...");
@@ -116,7 +116,10 @@ const CreateBook: React.FC<CreateBookScreenProps> = ({ navigation }) => {
             </View>
             <View style={{ flex: 2 }}>
               <SelectList
-                setSelected={(val: number) => setSelected(val)}
+                setSelected={(val: number) => {
+                  console.log(val);
+                  setSelected(val);
+                }}
                 data={langList}
                 save="key"
                 dropdownStyles={styles.dropdownStyle}
@@ -142,7 +145,10 @@ const CreateBook: React.FC<CreateBookScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bookListButton, { flex: 1 }]}
-              onPress={() => onClickToPage("create")}
+              onPress={async () => {
+                await createBookByClick(text, selected);
+                onClickToPage("create");
+              }}
             >
               <Text style={[styles.text]}>Create</Text>
             </TouchableOpacity>

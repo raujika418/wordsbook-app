@@ -6,7 +6,7 @@ const db_command = {
   wordsBookUpdate: (wbid: number, name: string, lang: number) =>
     `UPDATE WORDSBOOKS SET WORDSBOOKS_NAME = '${name}' ,LANG_ID = ${lang} where ID=${wbid}`,
   bookListCreate: (name: string, lang: number) =>
-    `INSERT INTO WORDSBOOKS (WORDSBOOKS_NAME, LANG_ID ) VALUES ('${name}', ${lang});`,
+    `INSERT INTO WORDSBOOKS (WORDSBOOKS_NAME, LANG_ID ) VALUES ('${name}', ${lang})`,
   bookListDelete: (bid: number) => `DELETE FROM WORDSBOOKS WHERE ID=${bid}`,
   wordsListQuery: (wbid: number) =>
     `Select w.id as id, w.WORDS_TEXT as TEXT, w.WORDS_TEXT_TRANSLATED as TEXT_TRANS, w.DES as DES from WORDS w where w.WORDSBOOK_ID = ${wbid}`,
